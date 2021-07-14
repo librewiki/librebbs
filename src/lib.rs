@@ -2,6 +2,7 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate diesel;
+pub mod custom_error;
 pub mod db;
 pub mod models;
 pub mod routes;
@@ -16,7 +17,18 @@ use std::env;
 
 pub async fn run() -> std::io::Result<()> {
     dotenv().ok();
-
+    env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
+    let _guard = sentry::init((
+        env::var("SENTRY_URL").expect("SENTRY_URL is not set"),
+        sentry::ClientOptions {
+            auto_session_tracking: true,
+            session_mode: sentry::SessionMode::Request,
+            release: sentry::release_name!(),
+            ..Default::default()
+        },
+    ));
+    env::set_var("RUST_BACKTRACE", "1");
     let pool = db::create_connection_pool();
     println!("http://{}", env::var("HOST").expect("HOST is not set"));
 
@@ -29,8 +41,9 @@ pub async fn run() -> std::io::Result<()> {
         }
 
         App::new()
-            .wrap(NormalizePath::default())
             .wrap(Logger::default())
+            .wrap(sentry_actix::Sentry::new())
+            .wrap(NormalizePath::default())
             .wrap(cors)
             .data(pool.clone())
             .service(web::scope("/v1").service(routes::scope()))

@@ -1,26 +1,21 @@
+use crate::custom_error::CustomError;
 use crate::db::DbPool;
 use crate::models::Board;
 use actix_web::{
     get, web,
     web::{block, Data},
-    Error, HttpResponse, Scope,
+    HttpResponse, Scope,
 };
 use jsonapi::api::*;
 use jsonapi::jsonapi_model;
 use jsonapi::model::*;
 
-jsonapi_model!(Board; "marker");
+jsonapi_model!(Board; "board");
 
 #[get("/")]
-async fn get(pool: Data<DbPool>) -> Result<HttpResponse, Error> {
-    let conn = pool.get().map_err(|e| {
-        eprintln!("{}", e);
-        HttpResponse::InternalServerError().finish()
-    })?;
-    let boards = block(move || Board::get_all(&conn)).await.map_err(|e| {
-        eprintln!("{}", e);
-        HttpResponse::InternalServerError().finish()
-    })?;
+async fn get(pool: Data<DbPool>) -> Result<HttpResponse, CustomError> {
+    let conn = pool.get()?;
+    let boards = block(move || Board::get_all(&conn)).await?;
     let doc = vec_to_jsonapi_document(boards);
     Ok(HttpResponse::Ok().json(doc))
 }
