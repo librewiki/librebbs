@@ -7,7 +7,7 @@ pub struct Board {
     pub id: i32,
     pub display_name: String,
     pub name: String,
-    pub is_active: bool
+    pub is_active: bool,
 }
 
 impl Board {

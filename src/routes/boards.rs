@@ -2,8 +2,8 @@ use crate::db::DbPool;
 use crate::models::Board;
 use actix_web::{
     get, web,
-    web::{block, Data, Query},
-    Error, HttpResponse, Scope
+    web::{block, Data},
+    Error, HttpResponse, Scope,
 };
 use jsonapi::api::*;
 use jsonapi::jsonapi_model;
@@ -26,6 +26,5 @@ async fn get(pool: Data<DbPool>) -> Result<HttpResponse, Error> {
 }
 
 pub fn scope() -> Scope {
-    web::scope("/boards")
-        .service(get)
+    web::scope("/boards").service(get)
 }

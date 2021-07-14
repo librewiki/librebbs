@@ -1,6 +1,6 @@
 pub mod boards;
 
-use actix_web::{get, Error, HttpResponse, web, Scope};
+use actix_web::{get, web, Error, HttpResponse, Scope};
 
 #[get("/")]
 async fn get() -> Result<HttpResponse, Error> {
@@ -8,7 +8,5 @@ async fn get() -> Result<HttpResponse, Error> {
 }
 
 pub fn scope() -> Scope {
-    web::scope("")
-        .service(get)
-        .service(boards::scope())
+    web::scope("").service(get).service(boards::scope())
 }

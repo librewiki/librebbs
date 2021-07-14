@@ -6,12 +6,11 @@ pub mod db;
 pub mod models;
 pub mod routes;
 pub mod schema;
-use actix_web::{
-    web,
-    middleware::{Logger, NormalizePath},
-    App, HttpServer,
-};
 use actix_cors::Cors;
+use actix_web::{
+    middleware::{Logger, NormalizePath},
+    web, App, HttpServer,
+};
 use dotenv::dotenv;
 use std::env;
 
