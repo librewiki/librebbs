@@ -1,13 +1,12 @@
 -- Your SQL goes here
-CREATE TABLE boards (
+CREATE TABLE posts (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    display_name VARCHAR(255) NOT NULL,
-    name VARCHAR(255) UNIQUE NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    board_id INT NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    content MEDIUMTEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT current_timestamp,
     updated_at TIMESTAMP NOT NULL DEFAULT current_timestamp ON UPDATE current_timestamp,
+    FOREIGN KEY (board_id) REFERENCES boards(id) ON UPDATE CASCADE,
     INDEX (created_at),
     INDEX (updated_at)
 );
-
-INSERT INTO boards (display_name, name) VALUES ('위키방', 'wiki');
