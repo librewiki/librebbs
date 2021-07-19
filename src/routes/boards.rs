@@ -12,7 +12,7 @@ use jsonapi::model::*;
 
 jsonapi_model!(Board; "board");
 
-#[get("/")]
+#[get("")]
 async fn get(pool: Data<DbPool>) -> Result<HttpResponse, CustomError> {
     let conn = pool.get()?;
     let boards = block(move || Board::get_all(&conn)).await?;

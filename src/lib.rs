@@ -2,6 +2,7 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate diesel;
+pub mod auth;
 pub mod custom_error;
 pub mod db;
 pub mod models;
@@ -9,7 +10,7 @@ pub mod routes;
 pub mod schema;
 use actix_cors::Cors;
 use actix_web::{
-    middleware::{Logger, NormalizePath},
+    middleware::{DefaultHeaders, Logger},
     web, App, HttpServer,
 };
 use dotenv::dotenv;
@@ -39,12 +40,13 @@ pub async fn run() -> std::io::Result<()> {
         for domain in cors_split {
             cors = cors.allowed_origin(&domain);
         }
+        cors = cors.allow_any_method().allow_any_header();
 
         App::new()
             .wrap(Logger::default())
             .wrap(sentry_actix::Sentry::new())
-            .wrap(NormalizePath::default())
             .wrap(cors)
+            .wrap(DefaultHeaders::new().header("Access-Control-Allow-Credentials", "true"))
             .data(pool.clone())
             .service(web::scope("/v1").service(routes::scope()))
             .service(routes::scope())
