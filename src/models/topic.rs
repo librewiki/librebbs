@@ -64,6 +64,10 @@ impl Topic {
         let post = topics::table.find(id).first::<Self>(conn).optional()?;
         Ok(post)
     }
+
+    pub fn has_ipv6(&self) -> bool {
+        self.author_ip[4..].iter().any(|x| *x != 0u8)
+    }
 }
 
 #[cfg(test)]
@@ -72,7 +76,8 @@ mod tests {
     use crate::db::create_connection;
 
     #[test]
-    fn test_post() {
+    fn test_topic() {
+        use std::convert::TryInto;
         use std::str::FromStr;
         let conn = create_connection();
         conn.test_transaction::<_, diesel::result::Error, _>(|| {
@@ -87,13 +92,22 @@ mod tests {
                 &ip,
             )
             .expect("must succeed");
+            let topics = Topic::get_all(&conn, 1, 0).expect("must succeed");
+            assert_eq!("test title", topics[0].title);
+            assert_eq!(Some("test_author".to_owned()), topics[0].author_name);
+            assert_eq!(true, topics[0].has_ipv6());
+            let arr: &[u8; 16] = topics[0].author_ip[..].try_into().expect("must succeed");
+            assert_eq!(ip, IpAddr::from(*arr));
+
             let ip = IpAddr::from_str("127.0.0.3").expect("must succeed");
             Topic::create(&conn, &boards[0], "test title 2", None, None, &ip)
                 .expect("must succeed");
             let topics = Topic::get_all(&conn, 1, 0).expect("must succeed");
             assert_eq!("test title 2", topics[0].title);
             assert_eq!(None, topics[0].author_name);
-
+            assert_eq!(false, topics[0].has_ipv6());
+            let arr: &[u8; 4] = topics[0].author_ip[0..4].try_into().expect("must succeed");
+            assert_eq!(ip, IpAddr::from(*arr));
             Ok(())
         });
     }
