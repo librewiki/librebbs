@@ -17,6 +17,9 @@ table! {
         author_id -> Nullable<Integer>,
         author_name -> Nullable<Varchar>,
         author_ip -> Binary,
+        is_closed -> Bool,
+        is_suspended -> Bool,
+        is_hidden -> Bool,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }

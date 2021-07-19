@@ -13,6 +13,9 @@ pub struct Topic {
     pub author_id: Option<i32>,
     pub author_name: Option<String>,
     pub author_ip: Vec<u8>,
+    pub is_closed: bool,
+    pub is_suspended: bool,
+    pub is_hidden: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -108,6 +111,9 @@ mod tests {
             assert_eq!(false, topics[0].has_ipv6());
             let arr: &[u8; 4] = topics[0].author_ip[0..4].try_into().expect("must succeed");
             assert_eq!(ip, IpAddr::from(*arr));
+            assert_eq!(false, topics[0].is_closed);
+            assert_eq!(false, topics[0].is_suspended);
+            assert_eq!(false, topics[0].is_hidden);
             Ok(())
         });
     }
