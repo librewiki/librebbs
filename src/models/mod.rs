@@ -1,5 +1,5 @@
 mod board;
-mod post;
+mod topic;
 
 pub use board::Board;
-pub use post::Post;
+pub use topic::Topic;

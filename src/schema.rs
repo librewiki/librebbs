@@ -10,19 +10,21 @@ table! {
 }
 
 table! {
-    posts (id) {
+    topics (id) {
         id -> Integer,
         board_id -> Integer,
         title -> Varchar,
-        content -> Mediumtext,
+        author_id -> Nullable<Integer>,
+        author_name -> Nullable<Varchar>,
+        author_ip -> Binary,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
 }
 
-joinable!(posts -> boards (board_id));
+joinable!(topics -> boards (board_id));
 
 allow_tables_to_appear_in_same_query!(
     boards,
-    posts,
+    topics,
 );
