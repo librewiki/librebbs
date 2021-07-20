@@ -3,7 +3,8 @@ use crate::schema::topics;
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use std::net::IpAddr;
+use std::convert::TryInto;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 #[derive(Serialize, Deserialize, Queryable, Identifiable, Debug)]
 pub struct Topic {
@@ -13,6 +14,32 @@ pub struct Topic {
     pub author_id: Option<i32>,
     pub author_name: Option<String>,
     pub author_ip: Vec<u8>,
+    pub is_closed: bool,
+    pub is_suspended: bool,
+    pub is_hidden: bool,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+fn ip_bytes_to_string(x: &Vec<u8>) -> String {
+    if x[4..].iter().any(|x| *x != 0u8) {
+        // IPv6
+        let arr: &[u8; 16] = x[..].try_into().unwrap();
+        Ipv6Addr::from(*arr).to_string()
+    } else {
+        // IPv4
+        let arr: &[u8; 4] = x[0..4].try_into().unwrap();
+        Ipv4Addr::from(*arr).to_string()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TopicPublic {
+    pub id: i32,
+    pub board_id: i32,
+    pub title: String,
+    pub author_id: Option<i32>,
+    pub author_name: String,
     pub is_closed: bool,
     pub is_suspended: bool,
     pub is_hidden: bool,
@@ -55,14 +82,16 @@ impl Topic {
             .execute(conn)?;
         Ok(())
     }
+
     pub fn get_all(conn: &MysqlConnection, limit: i32, offset: i32) -> Result<Vec<Self>> {
-        let posts = topics::table
+        let topics = topics::table
             .order_by(topics::id.desc())
             .limit(limit.into())
             .offset(offset.into())
             .load::<Self>(conn)?;
-        Ok(posts)
+        Ok(topics)
     }
+
     pub fn find_by_id(conn: &MysqlConnection, id: i32) -> Result<Option<Self>> {
         let post = topics::table.find(id).first::<Self>(conn).optional()?;
         Ok(post)
@@ -70,6 +99,25 @@ impl Topic {
 
     pub fn has_ipv6(&self) -> bool {
         self.author_ip[4..].iter().any(|x| *x != 0u8)
+    }
+
+    pub fn get_public(&self) -> TopicPublic {
+        TopicPublic {
+            id: self.id,
+            board_id: self.board_id,
+            title: self.title.clone(),
+            author_id: self.author_id,
+            author_name: if let Some(name) = &self.author_name {
+                name.clone()
+            } else {
+                ip_bytes_to_string(&self.author_ip)
+            },
+            is_closed: self.is_closed,
+            is_suspended: self.is_suspended,
+            is_hidden: self.is_hidden,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+        }
     }
 }
 
@@ -80,7 +128,6 @@ mod tests {
 
     #[test]
     fn test_topic() {
-        use std::convert::TryInto;
         use std::str::FromStr;
         let conn = create_connection();
         conn.test_transaction::<_, diesel::result::Error, _>(|| {

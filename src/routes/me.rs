@@ -2,9 +2,6 @@ use crate::auth::UserInfo;
 use crate::custom_error::CustomError;
 use actix_web::{client::Client, get, web, HttpResponse, Scope};
 use anyhow::anyhow;
-use jsonapi::api::*;
-use jsonapi::jsonapi_model;
-use jsonapi::model::*;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct MwProfileResponse {
@@ -23,7 +20,7 @@ struct MwProfileResponse {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Profile {
-    id: String,
+    id: i64,
     username: String,
     confirmed_email: bool,
     blocked: bool,
@@ -31,8 +28,6 @@ struct Profile {
     rights: Vec<String>,
     email: String,
 }
-
-jsonapi_model!(Profile; "Profile");
 
 #[get("")]
 async fn get_me(UserInfo { token, .. }: UserInfo) -> Result<HttpResponse, CustomError> {
@@ -49,7 +44,7 @@ async fn get_me(UserInfo { token, .. }: UserInfo) -> Result<HttpResponse, Custom
     let data: MwProfileResponse =
         serde_json::from_slice(&body).map_err(|e| anyhow!(format!("{}", e)))?;
     let resp = Profile {
-        id: data.sub.to_string(),
+        id: data.sub,
         username: data.username,
         confirmed_email: data.confirmed_email,
         blocked: data.blocked,
@@ -57,9 +52,8 @@ async fn get_me(UserInfo { token, .. }: UserInfo) -> Result<HttpResponse, Custom
         rights: data.rights,
         email: data.email,
     };
-    let doc = resp.to_jsonapi_document();
 
-    Ok(HttpResponse::Ok().json(doc))
+    Ok(HttpResponse::Ok().json(resp))
 }
 
 pub fn scope() -> Scope {
