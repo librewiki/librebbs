@@ -1,5 +1,5 @@
-use crate::models::Board;
-use crate::schema::topics;
+use crate::models::{Board, Comment};
+use crate::schema::{comments, topics};
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -80,9 +80,29 @@ impl Topic {
         Ok(topics)
     }
 
-    pub fn find_by_id(conn: &MysqlConnection, id: i32) -> Result<Option<Self>> {
-        let post = topics::table.find(id).first::<Self>(conn).optional()?;
+    pub fn find_by_id(conn: &MysqlConnection, id: i32) -> Result<Self> {
+        let post = topics::table.find(id).first::<Self>(conn)?;
         Ok(post)
+    }
+
+    pub fn get_comments(
+        &self,
+        conn: &MysqlConnection,
+        limit: i32,
+        offset: i32,
+        include_hidden: bool,
+    ) -> Result<Vec<Comment>> {
+        let mut query = comments::table.into_boxed();
+        query = query.filter(comments::topic_id.eq(self.id));
+        if !include_hidden {
+            query = query.filter(comments::is_hidden.eq(false));
+        }
+        let comments = query
+            .order_by(comments::id.asc())
+            .limit(limit.into())
+            .offset(offset.into())
+            .load::<Comment>(conn)?;
+        Ok(comments)
     }
 
     pub fn has_ipv6(&self) -> bool {

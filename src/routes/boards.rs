@@ -26,7 +26,7 @@ struct GetTopicsRequestQuery {
 }
 
 #[get("{board_id}/topics")]
-async fn get_topics(
+async fn get_board_topics(
     pool: Data<DbPool>,
     Path((board_id,)): Path<(i32,)>,
     query: Query<GetTopicsRequestQuery>,
@@ -45,7 +45,7 @@ async fn get_topics(
     let res = block(move || {
         if let Ok(board) = Board::find_by_id(&conn, board_id) {
             let topics = board
-                .get_topics(&conn, limit, offset)
+                .get_topics(&conn, limit, offset, false)
                 .map_err(|e| ErrorKind::OtherError(e))?;
             Ok(topics)
         } else {
@@ -72,5 +72,5 @@ async fn get_topics(
 pub fn scope() -> Scope {
     web::scope("/boards")
         .service(get_boards)
-        .service(get_topics)
+        .service(get_board_topics)
 }

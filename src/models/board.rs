@@ -28,9 +28,14 @@ impl Board {
         conn: &MysqlConnection,
         limit: i32,
         offset: i32,
+        include_hidden: bool,
     ) -> Result<Vec<Topic>> {
-        let topics = topics::table
-            .filter(topics::board_id.eq(self.id))
+        let mut query = topics::table.into_boxed();
+        query = query.filter(topics::board_id.eq(self.id));
+        if !include_hidden {
+            query = query.filter(topics::is_hidden.eq(false));
+        }
+        let topics = query
             .order_by(topics::id.desc())
             .limit(limit.into())
             .offset(offset.into())
