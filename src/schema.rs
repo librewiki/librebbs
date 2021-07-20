@@ -10,6 +10,20 @@ table! {
 }
 
 table! {
+    comments (id) {
+        id -> Integer,
+        topic_id -> Integer,
+        content -> Mediumtext,
+        author_id -> Nullable<Integer>,
+        author_name -> Nullable<Varchar>,
+        author_ip -> Binary,
+        is_hidden -> Bool,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+table! {
     topics (id) {
         id -> Integer,
         board_id -> Integer,
@@ -25,9 +39,11 @@ table! {
     }
 }
 
+joinable!(comments -> topics (topic_id));
 joinable!(topics -> boards (board_id));
 
 allow_tables_to_appear_in_same_query!(
     boards,
+    comments,
     topics,
 );

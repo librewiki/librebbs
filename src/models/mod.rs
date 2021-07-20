@@ -1,4 +1,5 @@
 mod board;
+pub mod comment;
 mod topic;
 
 pub use board::Board;

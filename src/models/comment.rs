@@ -1,5 +1,5 @@
-use crate::models::Board;
-use crate::schema::topics;
+use crate::models::Topic;
+use crate::schema::comments;
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -7,49 +7,45 @@ use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 #[derive(Serialize, Deserialize, Queryable, Identifiable, Debug)]
-pub struct Topic {
+pub struct Comment {
     pub id: i32,
-    pub board_id: i32,
-    pub title: String,
+    pub topic_id: i32,
+    pub content: String,
     pub author_id: Option<i32>,
     pub author_name: Option<String>,
     pub author_ip: Vec<u8>,
-    pub is_closed: bool,
-    pub is_suspended: bool,
     pub is_hidden: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct TopicPublic {
+pub struct CommentPublic {
     pub id: i32,
-    pub board_id: i32,
-    pub title: String,
+    pub topic_id: i32,
+    pub content: String,
     pub author_id: Option<i32>,
     pub author_name: String,
-    pub is_closed: bool,
-    pub is_suspended: bool,
     pub is_hidden: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
 
 #[derive(Insertable)]
-#[table_name = "topics"]
-struct NewTopic<'a> {
-    pub board_id: i32,
-    pub title: &'a str,
+#[table_name = "comments"]
+struct NewComment<'a> {
+    pub topic_id: i32,
+    pub content: &'a str,
     pub author_id: Option<i32>,
     pub author_name: Option<&'a str>,
     pub author_ip: Vec<u8>,
 }
 
-impl Topic {
+impl Comment {
     pub fn create(
         conn: &MysqlConnection,
-        board: &Board,
-        title: &str,
+        topic: &Topic,
+        content: &str,
         author_id: Option<i32>,
         author_name: Option<&str>,
         author_ip: &IpAddr,
@@ -58,30 +54,30 @@ impl Topic {
             IpAddr::V4(ip) => ip.octets().to_vec(),
             IpAddr::V6(ip) => ip.octets().to_vec(),
         };
-        let new_topic = NewTopic {
-            board_id: board.id,
+        let new_comment = NewComment {
+            topic_id: topic.id,
+            content,
             author_id,
             author_name,
             author_ip: ip_bin,
-            title,
         };
-        diesel::insert_into(topics::table)
-            .values(new_topic)
+        diesel::insert_into(comments::table)
+            .values(new_comment)
             .execute(conn)?;
         Ok(())
     }
 
     pub fn get_all(conn: &MysqlConnection, limit: i32, offset: i32) -> Result<Vec<Self>> {
-        let topics = topics::table
-            .order_by(topics::id.desc())
+        let comments = comments::table
+            .order_by(comments::id.desc())
             .limit(limit.into())
             .offset(offset.into())
             .load::<Self>(conn)?;
-        Ok(topics)
+        Ok(comments)
     }
 
     pub fn find_by_id(conn: &MysqlConnection, id: i32) -> Result<Option<Self>> {
-        let post = topics::table.find(id).first::<Self>(conn).optional()?;
+        let post = comments::table.find(id).first::<Self>(conn).optional()?;
         Ok(post)
     }
 
@@ -89,19 +85,17 @@ impl Topic {
         self.author_ip[4..].iter().any(|x| *x != 0u8)
     }
 
-    pub fn get_public(&self) -> TopicPublic {
-        TopicPublic {
+    pub fn get_public(&self) -> CommentPublic {
+        CommentPublic {
             id: self.id,
-            board_id: self.board_id,
-            title: self.title.clone(),
+            topic_id: self.topic_id,
+            content: self.content.clone(),
             author_id: self.author_id,
             author_name: if let Some(name) = &self.author_name {
                 name.clone()
             } else {
                 self.get_ip_string()
             },
-            is_closed: self.is_closed,
-            is_suspended: self.is_suspended,
             is_hidden: self.is_hidden,
             created_at: self.created_at,
             updated_at: self.updated_at,
@@ -126,6 +120,7 @@ impl Topic {
 mod tests {
     use super::*;
     use crate::db::create_connection;
+    use crate::models::Board;
 
     #[test]
     fn test_topic() {
@@ -144,24 +139,22 @@ mod tests {
             )
             .expect("must succeed");
             let topics = Topic::get_all(&conn, 1, 0).expect("must succeed");
-            assert_eq!("test title", topics[0].title);
-            assert_eq!(Some("test_author".to_owned()), topics[0].author_name);
-            assert_eq!(true, topics[0].has_ipv6());
-            let arr: &[u8; 16] = topics[0].author_ip[..].try_into().expect("must succeed");
+            Comment::create(
+                &conn,
+                &topics[0],
+                "Test content",
+                Some(3),
+                Some("test_author"),
+                &ip,
+            )
+            .expect("must succeed");
+            let comments = Comment::get_all(&conn, 1, 0).expect("must succeed");
+            assert_eq!("Test content", comments[0].content);
+            assert_eq!(Some("test_author".to_owned()), comments[0].author_name);
+            assert_eq!(true, comments[0].has_ipv6());
+            let arr: &[u8; 16] = comments[0].author_ip[..].try_into().expect("must succeed");
             assert_eq!(ip, IpAddr::from(*arr));
 
-            let ip = IpAddr::from_str("127.0.0.3").expect("must succeed");
-            Topic::create(&conn, &boards[0], "test title 2", None, None, &ip)
-                .expect("must succeed");
-            let topics = Topic::get_all(&conn, 1, 0).expect("must succeed");
-            assert_eq!("test title 2", topics[0].title);
-            assert_eq!(None, topics[0].author_name);
-            assert_eq!(false, topics[0].has_ipv6());
-            let arr: &[u8; 4] = topics[0].author_ip[0..4].try_into().expect("must succeed");
-            assert_eq!(ip, IpAddr::from(*arr));
-            assert_eq!(false, topics[0].is_closed);
-            assert_eq!(false, topics[0].is_suspended);
-            assert_eq!(false, topics[0].is_hidden);
             Ok(())
         });
     }
