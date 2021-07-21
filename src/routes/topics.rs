@@ -16,7 +16,9 @@ async fn get_topic(
 ) -> Result<HttpResponse, CustomError> {
     let conn = pool.get()?;
     match block(move || Topic::find_by_id(&conn, topic_id)).await {
-        Ok(topic) => Ok(HttpResponse::Ok().json(topic.get_public())),
+        Ok(topic) => Ok(HttpResponse::Ok()
+            .set_header("Cache-Control", "max-age=86400")
+            .json(topic.get_public())),
         Err(BlockingError::Error(_)) => Ok(HttpResponse::NotFound().body("Topic is not found")),
         Err(BlockingError::Canceled) => Err(BlockingError::Canceled.into()),
     }
