@@ -34,11 +34,15 @@ pub async fn run() -> std::io::Result<()> {
     println!("http://{}", env::var("HOST").expect("HOST is not set"));
 
     HttpServer::new(move || {
-        let cors_str = env::var("CORS").unwrap_or_default();
-        let cors_split = cors_str.split("|");
         let mut cors = Cors::default();
-        for domain in cors_split {
-            cors = cors.allowed_origin(&domain);
+        let cors_str = env::var("CORS").unwrap_or_default();
+        if cors_str.len() > 0 {
+            let cors_split = cors_str.split("|");
+            for domain in cors_split {
+                cors = cors.allowed_origin(&domain);
+            }
+        } else {
+            cors = cors.allow_any_origin();
         }
         cors = cors.allow_any_method().allow_any_header();
 
