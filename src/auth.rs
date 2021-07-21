@@ -1,4 +1,8 @@
-use actix_web::{dev, error::ErrorUnauthorized, Error, FromRequest, HttpMessage, HttpRequest};
+use actix_web::{
+    client::Client, dev, error::ErrorUnauthorized, web::Bytes, Error, FromRequest, HttpMessage,
+    HttpRequest,
+};
+use anyhow::anyhow;
 use chrono::prelude::*;
 use derive_more::{Display, Error};
 use futures::future::{err, ok, Ready};
@@ -58,7 +62,7 @@ fn decode(token: &str) -> Result<Claims, DecodeError> {
 
 #[derive(Debug)]
 pub struct UserInfo {
-    pub id: String,
+    pub id: i32,
     pub token: String,
 }
 
@@ -71,10 +75,13 @@ impl FromRequest for UserInfo {
         if let Some(token_cookie) = req.cookie("access_token") {
             let token = token_cookie.value();
             match decode(&token) {
-                Ok(decoded) => ok(UserInfo {
-                    id: decoded.sub,
-                    token: token.to_owned(),
-                }),
+                Ok(decoded) => match decoded.sub.parse::<i32>() {
+                    Ok(id) => ok(UserInfo {
+                        id,
+                        token: token.to_owned(),
+                    }),
+                    Err(_) => err(ErrorUnauthorized("TokenExpired")),
+                },
                 Err(e) => match e {
                     DecodeError::TokenExpired => err(ErrorUnauthorized("TokenExpired")),
                     DecodeError::TokenInvalid => err(ErrorUnauthorized("TokenInvalid")),
@@ -103,5 +110,59 @@ impl FromRequest for RefreshToken {
         } else {
             err(ErrorUnauthorized("Token is missing"))
         }
+    }
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Profile {
+    pub id: i32,
+    pub username: String,
+    pub confirmed_email: bool,
+    pub blocked: bool,
+    pub groups: Vec<String>,
+    pub rights: Vec<String>,
+    pub email: String,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct MwProfileResponse {
+    sub: i32,
+    username: String,
+    editcount: i32,
+    confirmed_email: bool,
+    blocked: bool,
+    registered: String,
+    groups: Vec<String>,
+    rights: Vec<String>,
+    grants: Vec<String>,
+    realname: String,
+    email: String,
+}
+
+impl Profile {
+    pub async fn get(token: &str) -> anyhow::Result<Self> {
+        let client = Client::default();
+        let mut res = client
+            .get("https://librewiki.net/rest.php/oauth2/resource/profile")
+            .set_header("Accept", "application/json")
+            .set_header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| anyhow!(format!("{}", e)))?;
+
+        // MW gives incorrect content-type header
+        let body: Bytes = res.body().await?;
+        let data: MwProfileResponse = serde_json::from_slice(&body)?;
+        let resp = Profile {
+            id: data.sub,
+            username: data.username,
+            confirmed_email: data.confirmed_email,
+            blocked: data.blocked,
+            groups: data.groups,
+            rights: data.rights,
+            email: data.email,
+        };
+
+        Ok(resp)
     }
 }

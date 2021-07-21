@@ -3,7 +3,7 @@ use derive_more::{Display, Error};
 
 #[derive(Debug, Display, Error)]
 pub struct CustomError {
-    err: anyhow::Error,
+    pub err: anyhow::Error,
 }
 
 impl error::ResponseError for CustomError {

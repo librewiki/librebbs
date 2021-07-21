@@ -71,6 +71,11 @@ impl Topic {
         Ok(())
     }
 
+    pub fn get_latest(conn: &MysqlConnection) -> Result<Self> {
+        let topics = topics::table.order_by(topics::id.desc()).first(conn)?;
+        Ok(topics)
+    }
+
     pub fn get_all(conn: &MysqlConnection, limit: i32, offset: i32) -> Result<Vec<Self>> {
         let topics = topics::table
             .order_by(topics::id.desc())

@@ -1,13 +1,16 @@
+use crate::auth::{Profile, UserInfo};
+use crate::connection_info::ConnectionInfo;
 use crate::custom_error::CustomError;
 use crate::db::DbPool;
-use crate::models::{CommentPublic, Topic};
-use actix_web::error::BlockingError;
+use crate::models::{Board, Comment, CommentPublic, Topic};
 use actix_web::{
-    get, web,
-    web::{block, Data, Path, Query},
+    error::BlockingError,
+    get, post, web,
+    web::{block, Data, Json, Path, Query},
     HttpResponse, Scope,
 };
 use derive_more::Display;
+use diesel::Connection;
 
 #[get("{topic_id}")]
 async fn get_topic(
@@ -74,8 +77,70 @@ async fn get_topic_comments(
     }
 }
 
+#[derive(Deserialize, Debug)]
+struct PostTopicRequest {
+    board_id: i32,
+    title: String,
+    content: String,
+}
+
+#[post("")]
+async fn post_topic(
+    ConnectionInfo { ip }: ConnectionInfo,
+    Json(PostTopicRequest {
+        board_id,
+        title,
+        content,
+    }): Json<PostTopicRequest>,
+    user_info: Option<UserInfo>,
+    pool: Data<DbPool>,
+) -> Result<HttpResponse, CustomError> {
+    #[derive(Debug, Display)]
+    enum ErrorKind {
+        BoardNotFound,
+        OtherError(anyhow::Error),
+    }
+
+    let conn = pool.get()?;
+    let profile = match user_info {
+        Some(UserInfo { token, .. }) => Some(Profile::get(&token).await?),
+        None => None,
+    };
+
+    let res = block::<_, (), ErrorKind>(move || {
+        let board = Board::find_by_id(&conn, board_id).map_err(|_| ErrorKind::BoardNotFound)?;
+        conn.transaction::<(), _, _>(|| {
+            match profile {
+                Some(Profile { id, username, .. }) => {
+                    Topic::create(&conn, &board, &title, Some(id), Some(&username), &ip)?;
+                    let topic = Topic::get_latest(&conn)?;
+                    Comment::create(&conn, &topic, &content, Some(id), Some(&username), &ip)?;
+                }
+                None => {
+                    Topic::create(&conn, &board, &title, None, None, &ip)?;
+                    let topic = Topic::get_latest(&conn)?;
+                    Comment::create(&conn, &topic, &content, None, None, &ip)?;
+                }
+            };
+            Ok(())
+        })
+        .map_err(|e| ErrorKind::OtherError(e))?;
+        Ok(())
+    })
+    .await;
+    match res {
+        Ok(()) => Ok(HttpResponse::NoContent().finish()),
+        Err(BlockingError::Error(ErrorKind::BoardNotFound)) => {
+            Ok(HttpResponse::NotFound().finish())
+        }
+        Err(BlockingError::Error(ErrorKind::OtherError(e))) => Err(e.into()),
+        Err(BlockingError::Canceled) => Err(BlockingError::Canceled.into()),
+    }
+}
+
 pub fn scope() -> Scope {
     web::scope("/topics")
+        .service(post_topic)
         .service(get_topic)
         .service(get_topic_comments)
 }

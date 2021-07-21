@@ -3,6 +3,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate diesel;
 pub mod auth;
+pub mod connection_info;
 pub mod custom_error;
 pub mod db;
 pub mod models;
