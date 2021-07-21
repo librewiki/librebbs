@@ -53,7 +53,9 @@ async fn get_me(UserInfo { token, .. }: UserInfo) -> Result<HttpResponse, Custom
         email: data.email,
     };
 
-    Ok(HttpResponse::Ok().json(resp))
+    Ok(HttpResponse::Ok()
+        .set_header("Cache-Control", "private, max-age=600")
+        .json(resp))
 }
 
 pub fn scope() -> Scope {

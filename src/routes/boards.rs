@@ -15,7 +15,7 @@ async fn get_boards(pool: Data<DbPool>) -> Result<HttpResponse, CustomError> {
     let boards = block(move || Board::get_all(&conn)).await?;
 
     Ok(HttpResponse::Ok()
-        .set_header("Cache-Control", "max-age=3600")
+        .set_header("Cache-Control", "max-age=86400")
         .json(boards))
 }
 
