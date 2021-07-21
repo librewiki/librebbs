@@ -55,6 +55,7 @@ async fn get_me(UserInfo { token, .. }: UserInfo) -> Result<HttpResponse, Custom
 
     Ok(HttpResponse::Ok()
         .set_header("Cache-Control", "private, max-age=600")
+        .set_header("Vary", "Cookie")
         .json(resp))
 }
 
