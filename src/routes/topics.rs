@@ -53,7 +53,7 @@ async fn get_topic_comments(
     let res = block(move || {
         if let Ok(topic) = Topic::find_by_id(&conn, topic_id) {
             let comments = topic
-                .get_comments(&conn, limit, offset, false)
+                .get_comments(&conn, limit, offset)
                 .map_err(|e| ErrorKind::OtherError(e))?;
             Ok(comments)
         } else {
@@ -65,7 +65,7 @@ async fn get_topic_comments(
         Ok(comments) => {
             let comments = comments
                 .iter()
-                .map(|x| x.get_public())
+                .map(|x| x.get_public(false))
                 .collect::<Vec<CommentPublic>>();
             if comments.len() == limit as usize {
                 Ok(HttpResponse::Ok()

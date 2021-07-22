@@ -95,14 +95,9 @@ impl Topic {
         conn: &MysqlConnection,
         limit: i32,
         offset: i32,
-        include_hidden: bool,
     ) -> Result<Vec<Comment>> {
-        let mut query = comments::table.into_boxed();
-        query = query.filter(comments::topic_id.eq(self.id));
-        if !include_hidden {
-            query = query.filter(comments::is_hidden.eq(false));
-        }
-        let comments = query
+        let comments = comments::table
+            .filter(comments::topic_id.eq(self.id))
             .order_by(comments::id.asc())
             .limit(limit.into())
             .offset(offset.into())

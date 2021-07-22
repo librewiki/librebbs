@@ -23,7 +23,7 @@ pub struct Comment {
 pub struct CommentPublic {
     pub id: i32,
     pub topic_id: i32,
-    pub content: String,
+    pub content: Option<String>,
     pub author_id: Option<i32>,
     pub author_name: String,
     pub is_hidden: bool,
@@ -85,11 +85,15 @@ impl Comment {
         self.author_ip[4..].iter().any(|x| *x != 0u8)
     }
 
-    pub fn get_public(&self) -> CommentPublic {
+    pub fn get_public(&self, show_hidden: bool) -> CommentPublic {
         CommentPublic {
             id: self.id,
             topic_id: self.topic_id,
-            content: self.content.clone(),
+            content: if show_hidden || !self.is_hidden {
+                Some(self.content.clone())
+            } else {
+                None
+            },
             author_id: self.author_id,
             author_name: if let Some(name) = &self.author_name {
                 name.clone()
