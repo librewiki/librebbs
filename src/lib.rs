@@ -8,6 +8,7 @@ pub mod custom_error;
 pub mod db;
 pub mod models;
 pub mod routes;
+pub mod s3;
 pub mod schema;
 use actix_cors::Cors;
 use actix_web::{

@@ -1,5 +1,6 @@
 mod auth;
 mod boards;
+mod files;
 mod me;
 mod topics;
 
@@ -15,6 +16,7 @@ pub fn scope() -> Scope {
         .service(get)
         .service(auth::scope())
         .service(me::scope())
+        .service(files::scope())
         .service(boards::scope())
         .service(topics::scope())
 }
