@@ -131,7 +131,59 @@ async fn post_topic(
     match res {
         Ok(()) => Ok(HttpResponse::NoContent().finish()),
         Err(BlockingError::Error(ErrorKind::BoardNotFound)) => {
-            Ok(HttpResponse::NotFound().finish())
+            Ok(HttpResponse::NotFound().body("Board is not found"))
+        }
+        Err(BlockingError::Error(ErrorKind::OtherError(e))) => Err(e.into()),
+        Err(BlockingError::Canceled) => Err(BlockingError::Canceled.into()),
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct PostCommentRequest {
+    content: String,
+}
+
+#[post("{topic_id}/comments")]
+async fn post_topic_comments(
+    ConnectionInfo { ip }: ConnectionInfo,
+    Json(PostCommentRequest { content }): Json<PostCommentRequest>,
+    Path((topic_id,)): Path<(i32,)>,
+    user_info: Option<UserInfo>,
+    pool: Data<DbPool>,
+) -> Result<HttpResponse, CustomError> {
+    #[derive(Debug, Display)]
+    enum ErrorKind {
+        TopicNotFound,
+        OtherError(anyhow::Error),
+    }
+
+    let conn = pool.get()?;
+    let profile = match user_info {
+        Some(UserInfo { token, .. }) => Some(Profile::get(&token).await?),
+        None => None,
+    };
+
+    let res = block::<_, (), ErrorKind>(move || {
+        let topic = Topic::find_by_id(&conn, topic_id).map_err(|_| ErrorKind::TopicNotFound)?;
+        conn.transaction::<(), _, _>(|| {
+            match profile {
+                Some(Profile { id, username, .. }) => {
+                    Comment::create(&conn, &topic, &content, Some(id), Some(&username), &ip)?;
+                }
+                None => {
+                    Comment::create(&conn, &topic, &content, None, None, &ip)?;
+                }
+            };
+            Ok(())
+        })
+        .map_err(|e| ErrorKind::OtherError(e))?;
+        Ok(())
+    })
+    .await;
+    match res {
+        Ok(()) => Ok(HttpResponse::NoContent().finish()),
+        Err(BlockingError::Error(ErrorKind::TopicNotFound)) => {
+            Ok(HttpResponse::NotFound().body("Topic is not found"))
         }
         Err(BlockingError::Error(ErrorKind::OtherError(e))) => Err(e.into()),
         Err(BlockingError::Canceled) => Err(BlockingError::Canceled.into()),
@@ -143,4 +195,5 @@ pub fn scope() -> Scope {
         .service(post_topic)
         .service(get_topic)
         .service(get_topic_comments)
+        .service(post_topic_comments)
 }
