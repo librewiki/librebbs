@@ -67,7 +67,13 @@ async fn get_topic_comments(
                 .iter()
                 .map(|x| x.get_public())
                 .collect::<Vec<CommentPublic>>();
-            Ok(HttpResponse::Ok().json(comments))
+            if comments.len() == limit as usize {
+                Ok(HttpResponse::Ok()
+                    .set_header("Cache-Control", "max-age=600")
+                    .json(comments))
+            } else {
+                Ok(HttpResponse::Ok().json(comments))
+            }
         }
         Err(BlockingError::Error(ErrorKind::TopicNotFound)) => {
             Ok(HttpResponse::NotFound().body("Topic is not found"))
