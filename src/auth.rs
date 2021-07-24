@@ -123,6 +123,12 @@ pub struct Profile {
     pub email: String,
 }
 
+impl Profile {
+    pub fn is_admin(&self) -> bool {
+        self.groups.contains(&"boardmanager".to_owned())
+    }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct MwProfileResponse {
     sub: i32,

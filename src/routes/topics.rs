@@ -28,7 +28,7 @@ async fn get_topic(
 }
 
 #[derive(Deserialize, Debug)]
-struct GetCommentsRequestQuery {
+struct GetCommentsQuery {
     limit: Option<i32>,
     offset: Option<i32>,
 }
@@ -37,7 +37,7 @@ struct GetCommentsRequestQuery {
 async fn get_topic_comments(
     pool: Data<DbPool>,
     Path((topic_id,)): Path<(i32,)>,
-    query: Query<GetCommentsRequestQuery>,
+    query: Query<GetCommentsQuery>,
 ) -> Result<HttpResponse, CustomError> {
     #[derive(Debug, Display)]
     enum ErrorKind {
@@ -67,13 +67,7 @@ async fn get_topic_comments(
                 .iter()
                 .map(|x| x.get_public(false))
                 .collect::<Vec<CommentPublic>>();
-            if comments.len() == limit as usize {
-                Ok(HttpResponse::Ok()
-                    .set_header("Cache-Control", "max-age=600")
-                    .json(comments))
-            } else {
-                Ok(HttpResponse::Ok().json(comments))
-            }
+            Ok(HttpResponse::Ok().json(comments))
         }
         Err(BlockingError::Error(ErrorKind::TopicNotFound)) => {
             Ok(HttpResponse::NotFound().body("Topic is not found"))

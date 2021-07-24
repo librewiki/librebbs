@@ -20,7 +20,7 @@ async fn get_boards(pool: Data<DbPool>) -> Result<HttpResponse, CustomError> {
 }
 
 #[derive(Deserialize, Debug)]
-struct GetTopicsRequestQuery {
+struct GetTopicsQuery {
     limit: Option<i32>,
     offset: Option<i32>,
 }
@@ -29,7 +29,7 @@ struct GetTopicsRequestQuery {
 async fn get_board_topics(
     pool: Data<DbPool>,
     Path((board_id,)): Path<(i32,)>,
-    query: Query<GetTopicsRequestQuery>,
+    query: Query<GetTopicsQuery>,
 ) -> Result<HttpResponse, CustomError> {
     #[derive(Debug, Display)]
     enum ErrorKind {
@@ -43,14 +43,11 @@ async fn get_board_topics(
 
     let conn = pool.get()?;
     let res = block(move || {
-        if let Ok(board) = Board::find_by_id(&conn, board_id) {
-            let topics = board
-                .get_topics(&conn, limit, offset, false)
-                .map_err(|e| ErrorKind::OtherError(e))?;
-            Ok(topics)
-        } else {
-            Err(ErrorKind::BoardNotFound)
-        }
+        let board = Board::find_by_id(&conn, board_id).map_err(|_| ErrorKind::BoardNotFound)?;
+        let topics = board
+            .get_topics(&conn, limit, offset, false)
+            .map_err(|e| ErrorKind::OtherError(e))?;
+        Ok(topics)
     })
     .await;
     match res {

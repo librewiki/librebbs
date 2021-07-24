@@ -6,7 +6,7 @@ use diesel::prelude::*;
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-#[derive(Serialize, Deserialize, Queryable, Identifiable, Debug)]
+#[derive(Serialize, Deserialize, Queryable, Identifiable, AsChangeset, Debug)]
 pub struct Comment {
     pub id: i32,
     pub topic_id: i32,
@@ -19,16 +19,18 @@ pub struct Comment {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CommentPublic {
+#[derive(Identifiable, AsChangeset, Debug)]
+#[table_name = "comments"]
+pub struct CommentForm {
     pub id: i32,
-    pub topic_id: i32,
-    pub content: Option<String>,
-    pub author_id: Option<i32>,
-    pub author_name: String,
-    pub is_hidden: bool,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub is_hidden: Option<bool>,
+}
+
+impl CommentForm {
+    pub fn save(&self, conn: &MysqlConnection) -> Result<Comment> {
+        let comment = self.save_changes::<Comment>(conn)?;
+        Ok(comment)
+    }
 }
 
 #[derive(Insertable)]
@@ -39,6 +41,18 @@ struct NewComment<'a> {
     pub author_id: Option<i32>,
     pub author_name: Option<&'a str>,
     pub author_ip: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CommentPublic {
+    pub id: i32,
+    pub topic_id: i32,
+    pub content: Option<String>,
+    pub author_id: Option<i32>,
+    pub author_name: String,
+    pub is_hidden: bool,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 impl Comment {
@@ -76,9 +90,9 @@ impl Comment {
         Ok(comments)
     }
 
-    pub fn find_by_id(conn: &MysqlConnection, id: i32) -> Result<Option<Self>> {
-        let post = comments::table.find(id).first::<Self>(conn).optional()?;
-        Ok(post)
+    pub fn find_by_id(conn: &MysqlConnection, id: i32) -> Result<Self> {
+        let comment = comments::table.find(id).first::<Self>(conn)?;
+        Ok(comment)
     }
 
     pub fn has_ipv6(&self) -> bool {
@@ -104,6 +118,10 @@ impl Comment {
             created_at: self.created_at,
             updated_at: self.updated_at,
         }
+    }
+
+    pub fn set_hidden(&mut self, is_hidden: bool) {
+        self.is_hidden = is_hidden;
     }
 
     fn get_ip_string(&self) -> String {
