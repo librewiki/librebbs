@@ -113,29 +113,29 @@ async fn post_topic(
         None => None,
     };
 
-    let res = block::<_, (), ErrorKind>(move || {
+    let res = block::<_, Topic, ErrorKind>(move || {
         let board = Board::find_by_id(&conn, board_id).map_err(|_| ErrorKind::BoardNotFound)?;
-        conn.transaction::<(), _, _>(|| {
-            match profile {
+        let topic = conn
+            .transaction::<Topic, _, _>(|| match profile {
                 Some(Profile { id, username, .. }) => {
                     Topic::create(&conn, &board, &title, Some(id), Some(&username), &ip)?;
                     let topic = Topic::get_latest(&conn)?;
                     Comment::create(&conn, &topic, &content, Some(id), Some(&username), &ip)?;
+                    Ok(topic)
                 }
                 None => {
                     Topic::create(&conn, &board, &title, None, None, &ip)?;
                     let topic = Topic::get_latest(&conn)?;
                     Comment::create(&conn, &topic, &content, None, None, &ip)?;
+                    Ok(topic)
                 }
-            };
-            Ok(())
-        })
-        .map_err(|e| ErrorKind::OtherError(e))?;
-        Ok(())
+            })
+            .map_err(|e| ErrorKind::OtherError(e))?;
+        Ok(topic)
     })
     .await;
     match res {
-        Ok(()) => Ok(HttpResponse::NoContent().finish()),
+        Ok(topic) => Ok(HttpResponse::Ok().json(topic.get_public())),
         Err(BlockingError::Error(ErrorKind::BoardNotFound)) => {
             Ok(HttpResponse::NotFound().body("Board is not found"))
         }
