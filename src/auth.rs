@@ -11,7 +11,6 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::env;
 
-/// Our claims struct, it needs to derive `Serialize` and/or `Deserialize`
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
     aud: String,
