@@ -59,13 +59,7 @@ async fn get_board_topics(
                 .iter()
                 .map(|x| x.get_public())
                 .collect::<Vec<TopicPublic>>();
-            if topics.len() == limit as usize {
-                Ok(HttpResponse::Ok()
-                    .set_header("Cache-Control", "max-age=600")
-                    .json(topics))
-            } else {
-                Ok(HttpResponse::Ok().json(topics))
-            }
+            Ok(HttpResponse::Ok().json(topics))
         }
         Err(BlockingError::Error(ErrorKind::BoardNotFound)) => {
             Ok(HttpResponse::NotFound().body("Board is not found"))
