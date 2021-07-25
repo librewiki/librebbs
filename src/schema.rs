@@ -24,6 +24,25 @@ table! {
 }
 
 table! {
+    logs (id) {
+        id -> Integer,
+        log_type_id -> Integer,
+        content -> Longtext,
+        user_id -> Nullable<Integer>,
+        user_name -> Nullable<Varchar>,
+        user_ip -> Binary,
+        created_at -> Timestamp,
+    }
+}
+
+table! {
+    log_types (id) {
+        id -> Integer,
+        name -> Nullable<Varchar>,
+    }
+}
+
+table! {
     topics (id) {
         id -> Integer,
         board_id -> Integer,
@@ -40,10 +59,13 @@ table! {
 }
 
 joinable!(comments -> topics (topic_id));
+joinable!(logs -> log_types (log_type_id));
 joinable!(topics -> boards (board_id));
 
 allow_tables_to_appear_in_same_query!(
     boards,
     comments,
+    logs,
+    log_types,
     topics,
 );

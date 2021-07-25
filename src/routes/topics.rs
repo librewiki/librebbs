@@ -1,8 +1,12 @@
+use std::net::IpAddr;
+
 use crate::auth::{Profile, UserInfo};
 use crate::connection_info::ConnectionInfo;
 use crate::custom_error::CustomError;
 use crate::db::DbPool;
-use crate::models::{Board, Comment, CommentPublic, PublicEntity, Topic, TopicForm};
+use crate::models::{
+    Board, Comment, CommentPublic, Log, LogContent, LogType, PublicEntity, Topic, TopicForm,
+};
 use actix_web::{
     error::BlockingError,
     get, post, put, web,
@@ -11,7 +15,7 @@ use actix_web::{
 };
 use actix_web_validator::Json;
 use derive_more::Display;
-use diesel::Connection;
+use diesel::{Connection, MysqlConnection};
 use validator::Validate;
 
 #[get("{topic_id}")]
@@ -41,36 +45,101 @@ struct PutTopicStatusRequest {
     is_hidden: Option<bool>,
 }
 
+fn log_put_topic_status(
+    conn: &MysqlConnection,
+    topic_id: i32,
+    user_id: Option<i32>,
+    user_name: Option<&str>,
+    user_ip: &IpAddr,
+    req_status: PutTopicStatusRequest,
+) -> anyhow::Result<()> {
+    let log_type = match req_status {
+        PutTopicStatusRequest {
+            is_closed: Some(true),
+            ..
+        } => LogType::CloseTopic,
+        PutTopicStatusRequest {
+            is_closed: Some(false),
+            ..
+        } => LogType::UncloseTopic,
+        PutTopicStatusRequest {
+            is_hidden: Some(true),
+            ..
+        } => LogType::HideTopic,
+        PutTopicStatusRequest {
+            is_hidden: Some(false),
+            ..
+        } => LogType::UnhideTopic,
+        PutTopicStatusRequest {
+            is_suspended: Some(true),
+            ..
+        } => LogType::SuspendTopic,
+        PutTopicStatusRequest {
+            is_suspended: Some(false),
+            ..
+        } => LogType::UnsuspendTopic,
+        _ => return Ok(()),
+    };
+    Log::add(
+        &conn,
+        &log_type,
+        &LogContent { target: topic_id },
+        user_id,
+        user_name,
+        &user_ip,
+    )?;
+    Ok(())
+}
+
 #[put("{topic_id}/status")]
 async fn put_topic_status(
     pool: Data<DbPool>,
     UserInfo { token, .. }: UserInfo,
     Path((topic_id,)): Path<(i32,)>,
     Json(req_status): Json<PutTopicStatusRequest>,
+    ConnectionInfo { ip }: ConnectionInfo,
 ) -> Result<HttpResponse, CustomError> {
     #[derive(Debug, Display)]
     enum ErrorKind {
         TopicNotFound,
         OtherError(anyhow::Error),
     }
+    impl From<diesel::result::Error> for ErrorKind {
+        fn from(error: diesel::result::Error) -> Self {
+            ErrorKind::OtherError(error.into())
+        }
+    }
 
-    if !Profile::get(&token).await?.is_admin() {
+    let profile = Profile::get(&token).await?;
+
+    if !profile.is_admin() {
         return Ok(HttpResponse::Forbidden().finish());
     }
 
     let conn = pool.get()?;
     let res = block(move || {
-        Topic::find_by_id(&conn, topic_id).map_err(|_| ErrorKind::TopicNotFound)?;
-        let topic_changes = TopicForm {
-            id: topic_id,
-            is_closed: req_status.is_closed,
-            is_suspended: req_status.is_suspended,
-            is_hidden: req_status.is_hidden,
-        };
-        let changed = topic_changes
-            .save(&conn)
+        conn.transaction::<Topic, _, _>(|| {
+            Topic::find_by_id(&conn, topic_id).map_err(|_| ErrorKind::TopicNotFound)?;
+            let topic_changes = TopicForm {
+                id: topic_id,
+                is_closed: req_status.is_closed,
+                is_suspended: req_status.is_suspended,
+                is_hidden: req_status.is_hidden,
+            };
+            let changed = topic_changes
+                .save(&conn)
+                .map_err(|e| ErrorKind::OtherError(e))?;
+            log_put_topic_status(
+                &conn,
+                topic_id,
+                Some(profile.id),
+                Some(&profile.username),
+                &ip,
+                req_status,
+            )
             .map_err(|e| ErrorKind::OtherError(e))?;
-        Ok(changed)
+            Ok(changed)
+        })
     })
     .await;
 

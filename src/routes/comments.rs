@@ -1,7 +1,10 @@
+use std::net::IpAddr;
+
 use crate::auth::{Profile, UserInfo};
+use crate::connection_info::ConnectionInfo;
 use crate::custom_error::CustomError;
 use crate::db::DbPool;
-use crate::models::{Comment, CommentForm};
+use crate::models::{Comment, CommentForm, Log, LogContent, LogType};
 use actix_web::error::BlockingError;
 use actix_web::{
     get, put, web,
@@ -10,6 +13,7 @@ use actix_web::{
 };
 use actix_web_validator::Json;
 use derive_more::Display;
+use diesel::{Connection, MysqlConnection};
 use validator::Validate;
 
 #[derive(Deserialize, Debug)]
@@ -50,34 +54,84 @@ struct PutCommentStatusRequest {
     is_hidden: Option<bool>,
 }
 
+fn log_put_comment_status(
+    conn: &MysqlConnection,
+    comment_id: i32,
+    user_id: Option<i32>,
+    user_name: Option<&str>,
+    user_ip: &IpAddr,
+    req_status: PutCommentStatusRequest,
+) -> anyhow::Result<()> {
+    let log_type = match req_status {
+        PutCommentStatusRequest {
+            is_hidden: Some(true),
+            ..
+        } => LogType::HideComment,
+        PutCommentStatusRequest {
+            is_hidden: Some(false),
+            ..
+        } => LogType::UnhideComment,
+        _ => return Ok(()),
+    };
+    Log::add(
+        &conn,
+        &log_type,
+        &LogContent { target: comment_id },
+        user_id,
+        user_name,
+        &user_ip,
+    )?;
+    Ok(())
+}
+
 #[put("{comment_id}/status")]
 async fn put_comment_status(
     pool: Data<DbPool>,
     UserInfo { token, .. }: UserInfo,
     Path((comment_id,)): Path<(i32,)>,
     Json(req_status): Json<PutCommentStatusRequest>,
+    ConnectionInfo { ip }: ConnectionInfo,
 ) -> Result<HttpResponse, CustomError> {
     #[derive(Debug, Display)]
     enum ErrorKind {
         CommentNotFound,
         OtherError(anyhow::Error),
     }
+    impl From<diesel::result::Error> for ErrorKind {
+        fn from(error: diesel::result::Error) -> Self {
+            ErrorKind::OtherError(error.into())
+        }
+    }
 
-    if !Profile::get(&token).await?.is_admin() {
+    let profile = Profile::get(&token).await?;
+
+    if !profile.is_admin() {
         return Ok(HttpResponse::Forbidden().finish());
     }
 
     let conn = pool.get()?;
+
     let res = block(move || {
-        Comment::find_by_id(&conn, comment_id).map_err(|_| ErrorKind::CommentNotFound)?;
-        let comment_changes = CommentForm {
-            id: comment_id,
-            is_hidden: req_status.is_hidden,
-        };
-        let changed = comment_changes
-            .save(&conn)
+        conn.transaction::<Comment, _, _>(|| {
+            Comment::find_by_id(&conn, comment_id).map_err(|_| ErrorKind::CommentNotFound)?;
+            let comment_changes = CommentForm {
+                id: comment_id,
+                is_hidden: req_status.is_hidden,
+            };
+            let changed = comment_changes
+                .save(&conn)
+                .map_err(|e| ErrorKind::OtherError(e))?;
+            log_put_comment_status(
+                &conn,
+                comment_id,
+                Some(profile.id),
+                Some(&profile.username),
+                &ip,
+                req_status,
+            )
             .map_err(|e| ErrorKind::OtherError(e))?;
-        Ok(changed)
+            Ok(changed)
+        })
     })
     .await;
 

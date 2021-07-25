@@ -1,6 +1,8 @@
 mod board;
 mod comment;
+mod log;
 mod topic;
+pub use self::log::{Log, LogContent, LogType};
 pub use board::Board;
 pub use comment::{Comment, CommentForm, CommentPublic};
 pub use topic::{Topic, TopicForm, TopicPublic};

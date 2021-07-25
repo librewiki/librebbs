@@ -120,10 +120,6 @@ impl Comment {
         }
     }
 
-    pub fn set_hidden(&mut self, is_hidden: bool) {
-        self.is_hidden = is_hidden;
-    }
-
     fn get_ip_string(&self) -> String {
         let x: &Vec<u8> = &self.author_ip;
         if x[4..].iter().any(|x| *x != 0u8) {
