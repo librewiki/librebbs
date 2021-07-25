@@ -27,7 +27,7 @@ table! {
     logs (id) {
         id -> Integer,
         log_type_id -> Integer,
-        content -> Longtext,
+        content -> Varchar,
         user_id -> Nullable<Integer>,
         user_name -> Nullable<Varchar>,
         user_ip -> Binary,

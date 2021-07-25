@@ -15,7 +15,7 @@ INSERT INTO log_types (id, name) VALUES (1, "CLOSE_TOPIC"),
 CREATE TABLE logs (
     id INT PRIMARY KEY AUTO_INCREMENT,
     log_type_id INT NOT NULL,
-    content JSON NOT NULL,
+    content VARCHAR(2000) NOT NULL,
     user_id INT NULL,
     user_name VARCHAR(100) NULL,
     user_ip BINARY(16) NOT NULL,
