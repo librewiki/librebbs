@@ -54,6 +54,7 @@ pub async fn run() -> std::io::Result<()> {
             .wrap(cors)
             .wrap(DefaultHeaders::new().header("Access-Control-Allow-Credentials", "true"))
             .data(pool.clone())
+            .app_data(actix_web_validator::JsonConfig::default().limit(1024 * 1024 * 1))
             .service(web::scope("/v1").service(routes::scope()))
             .service(routes::scope())
     })

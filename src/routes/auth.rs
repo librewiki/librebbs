@@ -3,15 +3,15 @@ use crate::custom_error::CustomError;
 use actix_web::{
     client::Client,
     http::{Cookie, StatusCode},
-    post, web,
-    web::Json,
-    HttpResponse, Scope,
+    post, web, HttpResponse, Scope,
 };
+use actix_web_validator::Json;
 use anyhow::anyhow;
 use std::env;
 use time::Duration;
+use validator::Validate;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Validate, Debug)]
 #[serde(rename_all = "camelCase")]
 struct LoginRequest {
     code: String,

@@ -6,11 +6,13 @@ use crate::models::{Board, Comment, CommentPublic, PublicEntity, Topic, TopicFor
 use actix_web::{
     error::BlockingError,
     get, post, put, web,
-    web::{block, Data, Json, Path, Query},
+    web::{block, Data, Path, Query},
     HttpRequest, HttpResponse, Scope,
 };
+use actix_web_validator::Json;
 use derive_more::Display;
 use diesel::Connection;
+use validator::Validate;
 
 #[get("{topic_id}")]
 async fn get_topic(
@@ -32,7 +34,7 @@ async fn get_topic(
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Validate, Debug)]
 struct PutTopicStatusRequest {
     is_closed: Option<bool>,
     is_suspended: Option<bool>,
@@ -140,10 +142,12 @@ async fn get_topic_comments(
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Validate, Debug)]
 struct PostTopicRequest {
     board_id: i32,
+    #[validate(length(min = 1, max = 100))]
     title: String,
+    #[validate(length(min = 1, max = 100000))]
     content: String,
 }
 
@@ -201,8 +205,9 @@ async fn post_topic(
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Validate, Debug)]
 struct PostCommentRequest {
+    #[validate(length(min = 1, max = 100000))]
     content: String,
 }
 

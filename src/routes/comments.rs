@@ -5,11 +5,12 @@ use crate::models::{Comment, CommentForm};
 use actix_web::error::BlockingError;
 use actix_web::{
     get, put, web,
-    web::Json,
     web::{block, Data, Path, Query},
     HttpResponse, Scope,
 };
+use actix_web_validator::Json;
 use derive_more::Display;
+use validator::Validate;
 
 #[derive(Deserialize, Debug)]
 struct GetCommentQuery {
@@ -44,7 +45,7 @@ async fn get_comment(
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Validate, Debug)]
 struct PutCommentStatusRequest {
     is_hidden: Option<bool>,
 }

@@ -1,9 +1,11 @@
 use crate::{custom_error::CustomError, s3};
-use actix_web::{post, web, web::Json, HttpResponse, Scope};
+use actix_web::{post, web, HttpResponse, Scope};
+use actix_web_validator::Json;
 use anyhow::anyhow;
 use std::path::Path;
+use validator::Validate;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Validate, Debug)]
 struct PostFileRequest {
     filename: String,
     content: String,
@@ -29,6 +31,6 @@ async fn post_files(
 }
 
 pub fn scope() -> Scope {
-    let json_cfg = web::JsonConfig::default().limit(1024 * 1024 * 15); // 15 MiB (base64 - about 30% larger than original)
+    let json_cfg = actix_web_validator::JsonConfig::default().limit(1024 * 1024 * 15); // 15 MiB (base64 - about 30% larger than original)
     web::scope("/files").app_data(json_cfg).service(post_files)
 }
