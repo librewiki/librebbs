@@ -43,7 +43,7 @@ struct NewComment<'a> {
     pub author_ip: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Hash, Debug)]
 pub struct CommentPublic {
     pub id: i32,
     pub topic_id: i32,

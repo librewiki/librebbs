@@ -3,8 +3,11 @@ use crate::schema::{comments, topics};
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use std::convert::TryInto;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::{
+    convert::TryInto,
+    hash::Hash,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+};
 
 #[derive(Serialize, Deserialize, Queryable, Identifiable, Debug)]
 pub struct Topic {
@@ -21,7 +24,23 @@ pub struct Topic {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Identifiable, AsChangeset, Debug)]
+#[table_name = "topics"]
+pub struct TopicForm {
+    pub id: i32,
+    pub is_closed: Option<bool>,
+    pub is_suspended: Option<bool>,
+    pub is_hidden: Option<bool>,
+}
+
+impl TopicForm {
+    pub fn save(&self, conn: &MysqlConnection) -> Result<Topic> {
+        let topic = self.save_changes::<Topic>(conn)?;
+        Ok(topic)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Hash)]
 pub struct TopicPublic {
     pub id: i32,
     pub board_id: i32,
