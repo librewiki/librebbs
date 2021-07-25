@@ -18,7 +18,7 @@ CREATE TABLE logs (
     content VARCHAR(2000) NOT NULL,
     user_id INT NULL,
     user_name VARCHAR(100) NULL,
-    user_ip BINARY(16) NOT NULL,
+    user_ip VARBINARY(16) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT current_timestamp,
     FOREIGN KEY (log_type_id) REFERENCES log_types(id) ON UPDATE CASCADE,
     INDEX (user_id),

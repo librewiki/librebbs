@@ -4,7 +4,7 @@ CREATE TABLE topics (
     title VARCHAR(500) NOT NULL,
     author_id INT NULL,
     author_name VARCHAR(100) NULL,
-    author_ip BINARY(16) NOT NULL,
+    author_ip VARBINARY(16) NOT NULL,
     is_closed BOOLEAN NOT NULL DEFAULT false,
     is_suspended BOOLEAN NOT NULL DEFAULT false,
     is_hidden BOOLEAN NOT NULL DEFAULT false,

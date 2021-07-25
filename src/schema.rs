@@ -16,7 +16,7 @@ table! {
         content -> Mediumtext,
         author_id -> Nullable<Integer>,
         author_name -> Nullable<Varchar>,
-        author_ip -> Binary,
+        author_ip -> Varbinary,
         is_hidden -> Bool,
         created_at -> Timestamp,
         updated_at -> Timestamp,
@@ -30,7 +30,7 @@ table! {
         content -> Varchar,
         user_id -> Nullable<Integer>,
         user_name -> Nullable<Varchar>,
-        user_ip -> Binary,
+        user_ip -> Varbinary,
         created_at -> Timestamp,
     }
 }
@@ -49,7 +49,7 @@ table! {
         title -> Varchar,
         author_id -> Nullable<Integer>,
         author_name -> Nullable<Varchar>,
-        author_ip -> Binary,
+        author_ip -> Varbinary,
         is_closed -> Bool,
         is_suspended -> Bool,
         is_hidden -> Bool,

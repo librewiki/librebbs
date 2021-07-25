@@ -4,7 +4,7 @@ CREATE TABLE comments (
     content MEDIUMTEXT NOT NULL,
     author_id INT NULL,
     author_name VARCHAR(100) NULL,
-    author_ip BINARY(16) NOT NULL,
+    author_ip VARBINARY(16) NOT NULL,
     is_hidden BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT current_timestamp,
     updated_at TIMESTAMP NOT NULL DEFAULT current_timestamp ON UPDATE current_timestamp,
