@@ -7,6 +7,7 @@ use crate::db::DbPool;
 use crate::models::{
     Board, Comment, CommentPublic, Log, LogContent, LogType, PublicEntity, Topic, TopicForm,
 };
+use actix_web::client::Client;
 use actix_web::{
     error::BlockingError,
     get, post, put, web,
@@ -14,6 +15,7 @@ use actix_web::{
     HttpRequest, HttpResponse, Scope,
 };
 use actix_web_validator::Json;
+use anyhow::{anyhow, Result};
 use derive_more::Display;
 use diesel::{Connection, MysqlConnection};
 use validator::Validate;
@@ -220,6 +222,38 @@ struct PostTopicRequest {
     content: String,
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct MwBlocksResponse {
+    query: MwBlocksResponseQuery,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct MwBlocksResponseQuery {
+    blocks: Vec<MwBlocksResponseEntity>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct MwBlocksResponseEntity {
+    id: i64,
+}
+
+async fn is_blocked_ip(ip: &IpAddr) -> Result<bool> {
+    let client = Client::default();
+    let mut res = client
+        .get(format!(
+            "https://librewiki.net/api.php?action=query&list=blocks&bkusers={}&format=json",
+            ip
+        ))
+        .set_header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| anyhow!(format!("{}", e)))?;
+
+    let data: MwBlocksResponse = res.json().await?;
+
+    Ok(data.query.blocks.len() > 0)
+}
+
 #[post("")]
 async fn post_topic(
     ConnectionInfo { ip }: ConnectionInfo,
@@ -242,6 +276,14 @@ async fn post_topic(
         Some(UserInfo { token, .. }) => Some(Profile::get(&token).await?),
         None => None,
     };
+
+    if let Some(profile) = &profile {
+        if profile.blocked {
+            return Ok(HttpResponse::Forbidden().body("You are blocked"));
+        }
+    } else if is_blocked_ip(&ip).await? {
+        return Ok(HttpResponse::Forbidden().body("You are blocked"));
+    }
 
     let res = block::<_, Topic, ErrorKind>(move || {
         let board = Board::find_by_id(&conn, board_id).map_err(|_| ErrorKind::BoardNotFound)?;
@@ -302,6 +344,14 @@ async fn post_topic_comments(
         Some(UserInfo { token, .. }) => Some(Profile::get(&token).await?),
         None => None,
     };
+
+    if let Some(profile) = &profile {
+        if profile.blocked {
+            return Ok(HttpResponse::Forbidden().body("You are blocked"));
+        }
+    } else if is_blocked_ip(&ip).await? {
+        return Ok(HttpResponse::Forbidden().body("You are blocked"));
+    }
 
     let res = block::<_, (), ErrorKind>(move || {
         let topic = Topic::find_by_id(&conn, topic_id).map_err(|_| ErrorKind::TopicNotFound)?;
