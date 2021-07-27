@@ -147,6 +147,15 @@ impl Topic {
         }
     }
 
+    /// Make updated_at recent
+    pub fn touch(self, conn: &MysqlConnection) -> Result<()> {
+        diesel::update(topics::table)
+            .filter(topics::id.eq(self.id))
+            .set(topics::updated_at.eq(diesel::dsl::now))
+            .execute(conn)?;
+        Ok(())
+    }
+
     fn get_ip_string(&self) -> String {
         let x: &Vec<u8> = &self.author_ip;
         if x[4..].iter().any(|x| *x != 0u8) {

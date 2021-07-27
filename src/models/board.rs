@@ -36,7 +36,7 @@ impl Board {
             query = query.filter(topics::is_hidden.eq(false));
         }
         let topics = query
-            .order_by(topics::id.desc())
+            .order_by(topics::updated_at.desc())
             .limit(limit.into())
             .offset(offset.into())
             .load::<Topic>(conn)?;

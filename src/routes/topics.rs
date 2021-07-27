@@ -371,6 +371,7 @@ async fn post_topic_comments(
                     Comment::create(&conn, &topic, &content, None, None, &ip)?;
                 }
             };
+            topic.touch(&conn)?;
             Ok(())
         })
         .map_err(|e| ErrorKind::OtherError(e))?;
