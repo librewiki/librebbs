@@ -20,6 +20,7 @@ pub struct Topic {
     pub is_closed: bool,
     pub is_suspended: bool,
     pub is_hidden: bool,
+    pub is_pinned: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -31,6 +32,7 @@ pub struct TopicForm {
     pub is_closed: Option<bool>,
     pub is_suspended: Option<bool>,
     pub is_hidden: Option<bool>,
+    pub is_pinned: Option<bool>,
 }
 
 impl TopicForm {
@@ -50,6 +52,7 @@ pub struct TopicPublic {
     pub is_closed: bool,
     pub is_suspended: bool,
     pub is_hidden: bool,
+    pub is_pinned: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -97,7 +100,7 @@ impl Topic {
 
     pub fn get_all(conn: &MysqlConnection, limit: i32, offset: i32) -> Result<Vec<Self>> {
         let topics = topics::table
-            .order_by(topics::id.desc())
+            .order_by(topics::updated_at.desc())
             .limit(limit.into())
             .offset(offset.into())
             .load::<Self>(conn)?;
@@ -142,6 +145,7 @@ impl Topic {
             is_closed: self.is_closed,
             is_suspended: self.is_suspended,
             is_hidden: self.is_hidden,
+            is_pinned: self.is_pinned,
             created_at: self.created_at,
             updated_at: self.updated_at,
         }
@@ -210,6 +214,7 @@ mod tests {
             assert_eq!(false, topics[0].is_closed);
             assert_eq!(false, topics[0].is_suspended);
             assert_eq!(false, topics[0].is_hidden);
+            assert_eq!(false, topics[0].is_pinned);
             Ok(())
         });
     }

@@ -15,6 +15,8 @@ pub enum LogType {
     UnsuspendTopic = 6,
     HideComment = 7,
     UnhideComment = 8,
+    PinTopic = 9,
+    UnpinTopic = 10,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

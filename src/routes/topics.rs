@@ -45,6 +45,7 @@ struct PutTopicStatusRequest {
     is_closed: Option<bool>,
     is_suspended: Option<bool>,
     is_hidden: Option<bool>,
+    is_pinned: Option<bool>,
 }
 
 fn log_put_topic_status(
@@ -80,6 +81,14 @@ fn log_put_topic_status(
             is_suspended: Some(false),
             ..
         } => LogType::UnsuspendTopic,
+        PutTopicStatusRequest {
+            is_pinned: Some(true),
+            ..
+        } => LogType::PinTopic,
+        PutTopicStatusRequest {
+            is_pinned: Some(false),
+            ..
+        } => LogType::UnpinTopic,
         _ => return Ok(()),
     };
     Log::add(
@@ -127,6 +136,7 @@ async fn put_topic_status(
                 is_closed: req_status.is_closed,
                 is_suspended: req_status.is_suspended,
                 is_hidden: req_status.is_hidden,
+                is_pinned: req_status.is_pinned,
             };
             let changed = topic_changes
                 .save(&conn)

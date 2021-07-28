@@ -53,6 +53,7 @@ table! {
         is_closed -> Bool,
         is_suspended -> Bool,
         is_hidden -> Bool,
+        is_pinned -> Bool,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
