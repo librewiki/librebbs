@@ -1,7 +1,7 @@
 use crate::models::{Board, Comment};
 use crate::schema::{comments, topics};
 use anyhow::Result;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::prelude::*;
 use std::{
     convert::TryInto,
@@ -53,8 +53,8 @@ pub struct TopicPublic {
     pub is_suspended: bool,
     pub is_hidden: bool,
     pub is_pinned: bool,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
@@ -146,8 +146,8 @@ impl Topic {
             is_suspended: self.is_suspended,
             is_hidden: self.is_hidden,
             is_pinned: self.is_pinned,
-            created_at: self.created_at,
-            updated_at: self.updated_at,
+            created_at: DateTime::<Utc>::from_utc(self.created_at, Utc),
+            updated_at: DateTime::<Utc>::from_utc(self.updated_at, Utc),
         }
     }
 

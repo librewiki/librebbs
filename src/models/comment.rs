@@ -1,7 +1,7 @@
 use crate::models::Topic;
 use crate::schema::comments;
 use anyhow::Result;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::prelude::*;
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -51,8 +51,8 @@ pub struct CommentPublic {
     pub author_id: Option<i32>,
     pub author_name: String,
     pub is_hidden: bool,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl Comment {
@@ -115,8 +115,8 @@ impl Comment {
                 self.get_ip_string()
             },
             is_hidden: self.is_hidden,
-            created_at: self.created_at,
-            updated_at: self.updated_at,
+            created_at: DateTime::<Utc>::from_utc(self.created_at, Utc),
+            updated_at: DateTime::<Utc>::from_utc(self.updated_at, Utc),
         }
     }
 

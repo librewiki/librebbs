@@ -1,7 +1,7 @@
 use crate::models::Topic;
 use crate::schema::{boards, topics};
 use anyhow::Result;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::prelude::*;
 
 #[derive(Serialize, Deserialize, Queryable, Identifiable, Debug)]
@@ -43,4 +43,24 @@ impl Board {
             .load::<Topic>(conn)?;
         Ok(topics)
     }
+    pub fn get_public(&self) -> BoardPublic {
+        BoardPublic {
+            id: self.id,
+            display_name: self.display_name.clone(),
+            name: self.name.clone(),
+            is_active: self.is_active,
+            created_at: DateTime::<Utc>::from_utc(self.created_at, Utc),
+            updated_at: DateTime::<Utc>::from_utc(self.updated_at, Utc),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Hash)]
+pub struct BoardPublic {
+    pub id: i32,
+    pub display_name: String,
+    pub name: String,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
