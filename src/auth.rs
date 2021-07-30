@@ -61,8 +61,8 @@ fn decode(token: &str) -> Result<Claims, DecodeError> {
 
 #[derive(Debug)]
 pub struct UserInfo {
-    pub id: i32,
-    pub token: String,
+    pub id: Option<i32>,
+    pub token: Option<String>,
 }
 
 impl FromRequest for UserInfo {
@@ -75,9 +75,9 @@ impl FromRequest for UserInfo {
             let token = token_cookie.value();
             match decode(&token) {
                 Ok(decoded) => match decoded.sub.parse::<i32>() {
-                    Ok(id) => ok(UserInfo {
-                        id,
-                        token: token.to_owned(),
+                    Ok(id) => ok(Self {
+                        id: Some(id),
+                        token: Some(token.to_owned()),
                     }),
                     Err(_) => err(ErrorUnauthorized("TokenExpired")),
                 },
@@ -87,7 +87,10 @@ impl FromRequest for UserInfo {
                 },
             }
         } else {
-            err(ErrorUnauthorized("Token is missing"))
+            ok(Self {
+                id: None,
+                token: None,
+            })
         }
     }
 }

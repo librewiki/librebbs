@@ -121,7 +121,10 @@ async fn put_topic_status(
         }
     }
 
-    let profile = Profile::get(&token).await?;
+    let profile = match token {
+        Some(token) => Profile::get(&token).await?,
+        None => return Ok(HttpResponse::Unauthorized().body("TokenMissing")),
+    };
 
     if !profile.is_admin() {
         return Ok(HttpResponse::Forbidden().finish());
@@ -272,7 +275,7 @@ async fn post_topic(
         title,
         content,
     }): Json<PostTopicRequest>,
-    user_info: Option<UserInfo>,
+    UserInfo { token, .. }: UserInfo,
     pool: Data<DbPool>,
 ) -> Result<HttpResponse, CustomError> {
     #[derive(Debug, Display)]
@@ -281,9 +284,8 @@ async fn post_topic(
         OtherError(anyhow::Error),
     }
 
-    let conn = pool.get()?;
-    let profile = match user_info {
-        Some(UserInfo { token, .. }) => Some(Profile::get(&token).await?),
+    let profile = match token {
+        Some(token) => Some(Profile::get(&token).await?),
         None => None,
     };
 
@@ -295,6 +297,7 @@ async fn post_topic(
         return Ok(HttpResponse::Forbidden().body("You are blocked"));
     }
 
+    let conn = pool.get()?;
     let res = block::<_, Topic, ErrorKind>(move || {
         let board = Board::find_by_id(&conn, board_id).map_err(|_| ErrorKind::BoardNotFound)?;
         let topic = conn
@@ -337,7 +340,7 @@ async fn post_topic_comments(
     ConnectionInfo { ip }: ConnectionInfo,
     Json(PostCommentRequest { content }): Json<PostCommentRequest>,
     Path((topic_id,)): Path<(i32,)>,
-    user_info: Option<UserInfo>,
+    UserInfo { token, .. }: UserInfo,
     pool: Data<DbPool>,
 ) -> Result<HttpResponse, CustomError> {
     #[derive(Debug, Display)]
@@ -349,9 +352,8 @@ async fn post_topic_comments(
         OtherError(anyhow::Error),
     }
 
-    let conn = pool.get()?;
-    let profile = match user_info {
-        Some(UserInfo { token, .. }) => Some(Profile::get(&token).await?),
+    let profile = match token {
+        Some(token) => Some(Profile::get(&token).await?),
         None => None,
     };
 
@@ -363,6 +365,7 @@ async fn post_topic_comments(
         return Ok(HttpResponse::Forbidden().body("You are blocked"));
     }
 
+    let conn = pool.get()?;
     let res = block::<_, (), ErrorKind>(move || {
         let topic = Topic::find_by_id(&conn, topic_id).map_err(|_| ErrorKind::TopicNotFound)?;
         if topic.is_hidden {

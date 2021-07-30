@@ -24,21 +24,18 @@ struct GetCommentQuery {
 #[get("{comment_id}")]
 async fn get_comment(
     pool: Data<DbPool>,
-    user: Option<UserInfo>,
+    UserInfo { token, .. }: UserInfo,
     Path((comment_id,)): Path<(i32,)>,
     query: Query<GetCommentQuery>,
 ) -> Result<HttpResponse, CustomError> {
     let show_hidden = query.show_hidden.unwrap_or(false);
     if show_hidden {
-        match user {
-            Some(UserInfo { token, .. }) => {
-                if !Profile::get(&token).await?.is_admin() {
-                    return Ok(HttpResponse::Forbidden().finish());
-                }
-            }
-            None => {
-                return Ok(HttpResponse::Forbidden().finish());
-            }
+        let profile = match token {
+            Some(token) => Profile::get(&token).await?,
+            None => return Ok(HttpResponse::Unauthorized().body("TokenMissing")),
+        };
+        if !profile.is_admin() {
+            return Ok(HttpResponse::Forbidden().finish());
         }
     }
     let conn = pool.get()?;
@@ -103,7 +100,10 @@ async fn put_comment_status(
         }
     }
 
-    let profile = Profile::get(&token).await?;
+    let profile = match token {
+        Some(token) => Profile::get(&token).await?,
+        None => return Ok(HttpResponse::Unauthorized().body("TokenMissing")),
+    };
 
     if !profile.is_admin() {
         return Ok(HttpResponse::Forbidden().finish());
