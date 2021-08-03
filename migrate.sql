@@ -47,3 +47,7 @@ SELECT document_srl, content, NULL, nick_name, INET6_ATON(ipaddress), FALSE, STR
     FROM oldbbs.libre_comments
     WHERE EXISTS (SELECT * FROM librebbs.topics topics WHERE topics.id = document_srl)
     ORDER BY comment_srl asc;
+
+UPDATE topics
+    SET comment_count = (SELECT COUNT(c.id) FROM comments c WHERE c.topic_id = topics.id),
+        updated_at = topics.updated_at;

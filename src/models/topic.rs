@@ -21,6 +21,7 @@ pub struct Topic {
     pub is_suspended: bool,
     pub is_hidden: bool,
     pub is_pinned: bool,
+    pub comment_count: i32,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -53,6 +54,7 @@ pub struct TopicPublic {
     pub is_suspended: bool,
     pub is_hidden: bool,
     pub is_pinned: bool,
+    pub comment_count: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -146,18 +148,10 @@ impl Topic {
             is_suspended: self.is_suspended,
             is_hidden: self.is_hidden,
             is_pinned: self.is_pinned,
+            comment_count: self.comment_count,
             created_at: DateTime::<Utc>::from_utc(self.created_at, Utc),
             updated_at: DateTime::<Utc>::from_utc(self.updated_at, Utc),
         }
-    }
-
-    /// Make updated_at recent
-    pub fn touch(self, conn: &MysqlConnection) -> Result<()> {
-        diesel::update(topics::table)
-            .filter(topics::id.eq(self.id))
-            .set(topics::updated_at.eq(diesel::dsl::now))
-            .execute(conn)?;
-        Ok(())
     }
 
     fn get_ip_string(&self) -> String {

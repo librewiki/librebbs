@@ -54,6 +54,7 @@ table! {
         is_suspended -> Bool,
         is_hidden -> Bool,
         is_pinned -> Bool,
+        comment_count -> Integer,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }

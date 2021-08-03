@@ -375,19 +375,16 @@ async fn post_topic_comments(
         } else if topic.is_suspended {
             return Err(ErrorKind::TopicIsSuspended);
         }
-        conn.transaction::<(), _, _>(|| {
-            match profile {
-                Some(Profile { id, username, .. }) => {
-                    Comment::create(&conn, &topic, &content, Some(id), Some(&username), &ip)?;
-                }
-                None => {
-                    Comment::create(&conn, &topic, &content, None, None, &ip)?;
-                }
-            };
-            topic.touch(&conn)?;
-            Ok(())
-        })
-        .map_err(|e| ErrorKind::OtherError(e))?;
+        match profile {
+            Some(Profile { id, username, .. }) => {
+                Comment::create(&conn, &topic, &content, Some(id), Some(&username), &ip)
+                    .map_err(|e| ErrorKind::OtherError(e))?;
+            }
+            None => {
+                Comment::create(&conn, &topic, &content, None, None, &ip)
+                    .map_err(|e| ErrorKind::OtherError(e))?;
+            }
+        };
         Ok(())
     })
     .await;
