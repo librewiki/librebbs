@@ -9,7 +9,8 @@ use std::{
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
 };
 
-#[derive(Serialize, Deserialize, Queryable, Identifiable, Debug)]
+#[derive(Serialize, Deserialize, Queryable, QueryableByName, Identifiable, Debug, Clone)]
+#[table_name="topics"]
 pub struct Topic {
     pub id: i32,
     pub board_id: i32,

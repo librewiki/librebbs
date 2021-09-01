@@ -3,6 +3,7 @@ use crate::schema::{boards, topics};
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::prelude::*;
+use diesel::sql_query;
 
 #[derive(Serialize, Deserialize, Queryable, Identifiable, Debug)]
 pub struct Board {
@@ -52,6 +53,41 @@ impl Board {
             created_at: DateTime::<Utc>::from_utc(self.created_at, Utc),
             updated_at: DateTime::<Utc>::from_utc(self.updated_at, Utc),
         }
+    }
+    pub fn search_topics(
+        &self,
+        conn: &MysqlConnection,
+        limit: i32,
+        offset: i32,
+        include_hidden: bool,
+        query: String,
+    ) -> Result<Vec<Topic>> {
+        let hidden = if include_hidden {
+            ""
+        } else {
+            "AND is_hidden = false"
+        };
+        let sql = format!(
+            "\
+SELECT T.id, T.board_id, T.title,
+       T.author_id, T.author_name, T.author_ip,
+       T.is_closed, T.is_suspended, T.is_hidden,
+       T.is_pinned, T.comment_count, T.created_at,
+       T.updated_at, match(title) against('{}' in natural language mode) as score
+FROM topics T
+WHERE match(title) against('{}' in natural language mode)
+    {}
+ORDER BY score DESC LIMIT {} OFFSET {};
+            ",
+            query,
+            query,
+            hidden,
+            limit,
+            offset
+        );
+        println!("QUERY:: {}", sql);
+        let results = sql_query(sql).load(conn).unwrap();
+        Ok(results)
     }
 }
 
