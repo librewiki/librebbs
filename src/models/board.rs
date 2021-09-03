@@ -75,15 +75,16 @@ SELECT T.id, T.board_id, T.title,
        T.is_pinned, T.comment_count, T.created_at,
        T.updated_at, match(title) against('{}' in natural language mode) as score
 FROM topics T
-WHERE match(title) against('{}' in natural language mode)
+WHERE match(title) against('{}' in natural language mode) AND board_id = {}
     {}
 ORDER BY score DESC LIMIT {} OFFSET {};
             ",
-            query,
-            query,
-            hidden,
-            limit,
-            offset
+            query, // score
+            query, // FULLTEXT
+            self.id,
+            hidden, // include_hidden
+            limit, // limit
+            offset, // offset
         );
         println!("QUERY:: {}", sql);
         let results = sql_query(sql).load(conn).unwrap();

@@ -80,7 +80,7 @@ struct GetSearchQuery {
 }
 
 #[get("{board_id}/search")]
-async fn search(
+async fn search_topics(
     pool: Data<DbPool>,
     Path((board_id,)): Path<(i32,)>,
     query: Query<GetSearchQuery>,
@@ -124,4 +124,5 @@ pub fn scope() -> Scope {
     web::scope("/boards")
         .service(get_boards)
         .service(get_board_topics)
+        .service(search_topics)
 }
