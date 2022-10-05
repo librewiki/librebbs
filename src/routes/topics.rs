@@ -254,7 +254,7 @@ async fn is_blocked_ip(ip: &IpAddr) -> Result<bool> {
     let client = Client::default();
     let mut res = client
         .get(format!(
-            "https://librewiki.net/api.php?action=query&list=blocks&bkusers={}&format=json",
+            "https://librewiki.net/api.php?action=query&list=blocks&bkip={}&format=json",
             ip
         ))
         .set_header("Accept", "application/json")
